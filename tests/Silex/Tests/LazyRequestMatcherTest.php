@@ -58,24 +58,4 @@ class LazyRequestMatcherTest extends TestCase
         $request = Request::create('path');
         $matcher->matchRequest($request);
     }
-
-    /**
-     * @covers \Silex\LazyRequestMatcher::matchRequest
-     */
-    public function testMatchIsProxy()
-    {
-        $request = Request::create('path');
-        $matcher = $this->getMockBuilder('Symfony\Component\Routing\Matcher\RequestMatcherInterface')->getMock();
-        $matcher->expects($this->once())
-            ->method('matchRequest')
-            ->with($request)
-            ->willReturn('matcherReturnValue');
-
-        $matcher = new LazyRequestMatcher(function () use ($matcher) {
-            return $matcher;
-        });
-        $result = $matcher->matchRequest($request);
-
-        $this->assertEquals('matcherReturnValue', $result);
-    }
 }

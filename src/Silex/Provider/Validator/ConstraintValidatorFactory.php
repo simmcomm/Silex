@@ -14,6 +14,7 @@ namespace Silex\Provider\Validator;
 use Pimple\Container;
 use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\ConstraintValidatorFactory as BaseConstraintValidatorFactory;
+use Symfony\Component\Validator\ConstraintValidatorInterface;
 
 /**
  * Uses a service container to create constraint validators with dependencies.
@@ -39,7 +40,7 @@ class ConstraintValidatorFactory extends BaseConstraintValidatorFactory
      * @param Container $container    DI container
      * @param array     $serviceNames Validator service names
      */
-    public function __construct(Container $container, array $serviceNames = [], $propertyAccessor = null)
+    public function __construct(Container $container, array $serviceNames = [], $propertyAccessor = [])
     {
         parent::__construct($propertyAccessor);
 
@@ -50,7 +51,7 @@ class ConstraintValidatorFactory extends BaseConstraintValidatorFactory
     /**
      * {@inheritdoc}
      */
-    public function getInstance(Constraint $constraint)
+    public function getInstance(Constraint $constraint): ConstraintValidatorInterface
     {
         $name = $constraint->validatedBy();
 

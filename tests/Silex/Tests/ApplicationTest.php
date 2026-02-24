@@ -432,7 +432,7 @@ class ApplicationTest extends TestCase
         })
         ->before($middleware);
 
-        $app->handle(Request::create('/'), HttpKernelInterface::MASTER_REQUEST, false);
+        $app->handle(Request::create('/'), HttpKernelInterface::MAIN_REQUEST, false);
     }
 
     public function testNonResponseAndNonNullReturnFromRouteAfterMiddlewareShouldThrowRuntimeException()
@@ -449,7 +449,7 @@ class ApplicationTest extends TestCase
         })
         ->after($middleware);
 
-        $app->handle(Request::create('/'), HttpKernelInterface::MASTER_REQUEST, false);
+        $app->handle(Request::create('/'), HttpKernelInterface::MAIN_REQUEST, false);
     }
 
     public function testSubRequest()

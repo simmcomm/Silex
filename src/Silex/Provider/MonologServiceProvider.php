@@ -15,6 +15,7 @@ use InvalidArgumentException;
 use Monolog\ErrorHandler;
 use Monolog\Formatter\LineFormatter;
 use Monolog\Handler;
+use Monolog\Handler\FingersCrossed\ErrorLevelActivationStrategy;
 use Monolog\Logger;
 use Pimple\Container;
 use Pimple\ServiceProviderInterface;
@@ -46,8 +47,9 @@ class MonologServiceProvider implements ServiceProviderInterface, BootableProvid
             if (isset($app['request_stack'])) {
                 $app['monolog.not_found_activation_strategy'] = function () use ($app) {
                     $level = self::translateLevel($app['monolog.level']);
+                    $levelStrategy = new ErrorLevelActivationStrategy($level);
 
-                    return new NotFoundActivationStrategy($app['request_stack'], ['^/'], $level);
+                    return new NotFoundActivationStrategy($app['request_stack'], ['^/'], $levelStrategy);
                 };
             }
         }

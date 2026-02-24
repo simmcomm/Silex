@@ -17,7 +17,7 @@ use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
-use Symfony\Component\HttpKernel\EventListener\TestSessionListener as DefaultTestSessionListener;
+use Symfony\Component\HttpKernel\EventListener\SessionListener as DefaultTestSessionListener;
 use Symfony\Component\HttpKernel\KernelEvents;
 
 /**

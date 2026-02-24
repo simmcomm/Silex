@@ -15,7 +15,6 @@ use Pimple\Container;
 use Pimple\Psr11\Container as Psr11Container;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
-use Symfony\Component\HttpKernel\Event\FinishRequestEvent;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Component\HttpKernel\EventListener\SessionListener as DefaultSessionListener;
@@ -47,7 +46,6 @@ class SessionListener implements EventSubscriberInterface
             KernelEvents::REQUEST => ['onKernelRequest', 128],
             // low priority to come after regular response listeners, but higher than StreamedResponseListener
             KernelEvents::RESPONSE => ['onKernelResponse', -1000],
-            KernelEvents::FINISH_REQUEST => ['onFinishRequest'],
         ];
     }
 
@@ -59,11 +57,6 @@ class SessionListener implements EventSubscriberInterface
     public function onKernelResponse(ResponseEvent $event)
     {
         $this->listener->onKernelResponse($event);
-    }
-
-    public function onFinishRequest(FinishRequestEvent $event)
-    {
-        $this->listener->onFinishRequest($event);
     }
 
     protected function getSession(): ?SessionInterface

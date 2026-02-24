@@ -11,6 +11,7 @@
 
 namespace Silex\Application;
 
+use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactoryInterface;
 use Symfony\Component\Security\Core\Exception\AuthenticationCredentialsNotFoundException;
 use Symfony\Component\Security\Core\User\UserInterface;
 
@@ -31,9 +32,14 @@ trait SecurityTrait
      *
      * @throws \RuntimeException when no password encoder could be found for the user
      */
-    public function encodePassword(UserInterface $user, $password)
+    public function hashPassword(UserInterface $user, $password)
     {
-        return $this['security.encoder_factory']->getEncoder($user)->encodePassword($password, $user->getSalt());
+        /**
+         * @var PasswordHasherFactoryInterface $passwordHasherFactory
+         */
+        $passwordHasherFactory = $this['security.password_hasher_factory'];
+
+        return $passwordHasherFactory->getPasswordHasher($user)->hash($password);
     }
 
     /**

@@ -22,6 +22,10 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestMatcher;
+use Symfony\Component\PasswordHasher\Hasher\MessageDigestPasswordHasher;
+use Symfony\Component\PasswordHasher\Hasher\NativePasswordHasher;
+use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactory;
+use Symfony\Component\PasswordHasher\Hasher\Pbkdf2PasswordHasher;
 use Symfony\Component\Security\Core\Authentication\AuthenticationProviderManager;
 use Symfony\Component\Security\Core\Authentication\AuthenticationTrustResolver;
 use Symfony\Component\Security\Core\Authentication\Provider\AnonymousAuthenticationProvider;
@@ -46,6 +50,7 @@ use Symfony\Component\Security\Guard\GuardAuthenticatorHandler;
 use Symfony\Component\Security\Guard\Provider\GuardAuthenticationProvider;
 use Symfony\Component\Security\Http\AccessMap;
 use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
+use Symfony\Component\Security\Http\Authentication\AuthenticatorManager;
 use Symfony\Component\Security\Http\Authentication\DefaultAuthenticationFailureHandler;
 use Symfony\Component\Security\Http\Authentication\DefaultAuthenticationSuccessHandler;
 use Symfony\Component\Security\Http\EntryPoint\BasicAuthenticationEntryPoint;
@@ -115,34 +120,40 @@ class SecurityServiceProvider implements ServiceProviderInterface, EventListener
         });
 
         $app['security.authentication_manager'] = function ($app) {
-            $manager = new AuthenticationProviderManager($app['security.authentication_providers']);
+            $manager = new AuthenticatorManager(
+                [],
+                $app['security.token_storage'],
+                $app['event_dispatcher'],
+                'firewall',
+                $app['logger'],
+            );
             $manager->setEventDispatcher($app['dispatcher']);
 
             return $manager;
         };
 
         // by default, all users use the digest encoder
-        $app['security.encoder_factory'] = function ($app) {
-            return new EncoderFactory([
-                                          'Symfony\Component\Security\Core\User\UserInterface' => $app['security.default_encoder'],
+        $app['security.password_hasher_factory'] = function ($app) {
+            return new PasswordHasherFactory([
+                'Symfony\Component\Security\Core\User\UserInterface' => $app['security.default_hasher'],
                                       ]);
         };
 
         // by default, all users use the BCrypt encoder
-        $app['security.default_encoder'] = function ($app) {
-            return $app['security.encoder.bcrypt'];
+        $app['security.default_hasher'] = function ($app) {
+            return $app['security.hasher.bcrypt'];
         };
 
-        $app['security.encoder.digest'] = function ($app) {
-            return new MessageDigestPasswordEncoder();
+        $app['security.hasher.digest'] = function ($app) {
+            return new MessageDigestPasswordHasher();
         };
 
-        $app['security.encoder.bcrypt'] = function ($app) {
-            return new NativePasswordEncoder($app['security.encoder.bcrypt.cost']);
+        $app['security.hasher.bcrypt'] = function ($app) {
+            return new NativePasswordHasher();
         };
 
-        $app['security.encoder.pbkdf2'] = function ($app) {
-            return new Pbkdf2PasswordEncoder();
+        $app['security.hasher.pbkdf2'] = function ($app) {
+            return new Pbkdf2PasswordHasher();
         };
 
         $app['security.user_checker'] = function ($app) {
@@ -163,7 +174,7 @@ class SecurityServiceProvider implements ServiceProviderInterface, EventListener
         $app['security.firewall'] = function ($app) {
             if (isset($app['validator'])) {
                 $app['security.validator.user_password_validator'] = function ($app) {
-                    return new UserPasswordValidator($app['security.token_storage'], $app['security.encoder_factory']);
+                    return new UserPasswordValidator($app['security.token_storage'], $app['security.password_hasher_factory']);
                 };
 
                 $app['validator.validator_service_ids'] = array_merge($app['validator.validator_service_ids'], ['security.validator.user_password' => 'security.validator.user_password_validator']);
@@ -175,23 +186,19 @@ class SecurityServiceProvider implements ServiceProviderInterface, EventListener
         $app['security.channel_listener'] = function ($app) {
             return new ChannelListener(
                 $app['security.access_map'],
-                new RetryAuthenticationEntryPoint(
-                    $app['request.http_port'] ?? 80,
-                    $app['request.https_port'] ?? 443
-                ),
-                $app['logger']
+                $app['logger'],
+                $app['request.http_port'] ?? 80,
+                $app['request.https_port'] ?? 443,
             );
         };
 
         // generate the build-in authentication factories
-        foreach (['logout', 'pre_auth', 'guard', 'form', 'http', 'remember_me', 'anonymous'] as $type) {
+        foreach (['logout', 'pre_auth', 'form', 'http', 'remember_me'] as $type) {
             $entryPoint = null;
             if ('http' === $type) {
                 $entryPoint = 'http';
             } elseif ('form' === $type) {
                 $entryPoint = 'form';
-            } elseif ('guard' === $type) {
-                $entryPoint = 'guard';
             }
 
             $app['security.authentication_listener.factory.'.$type] = $app->protect(function ($name, $options) use ($type, $app, $entryPoint) {
@@ -203,18 +210,7 @@ class SecurityServiceProvider implements ServiceProviderInterface, EventListener
                     $app['security.authentication_listener.'.$name.'.'.$type] = $app['security.authentication_listener.'.$type.'._proto']($name, $options);
                 }
 
-                $provider = 'dao';
-                if ('anonymous' === $type) {
-                    $provider = 'anonymous';
-                } elseif ('guard' === $type) {
-                    $provider = 'guard';
-                }
-                if (!isset($app['security.authentication_provider.'.$name.'.'.$provider])) {
-                    $app['security.authentication_provider.'.$name.'.'.$provider] = $app['security.authentication_provider.'.$provider.'._proto']($name, $options);
-                }
-
                 return [
-                    'security.authentication_provider.'.$name.'.'.$provider,
                     'security.authentication_listener.'.$name.'.'.$type,
                     $entryPoint ? 'security.entry_point.'.$name.'.'.$entryPoint : null,
                     $type,
@@ -223,7 +219,7 @@ class SecurityServiceProvider implements ServiceProviderInterface, EventListener
         }
 
         $app['security.firewall_map'] = function ($app) {
-            $positions = ['logout', 'pre_auth', 'guard', 'form', 'http', 'remember_me', 'anonymous'];
+            $positions = ['logout', 'pre_auth', 'form', 'http', 'remember_me'];
             $providers = [];
             $configs = [];
             foreach ($app['security.firewalls'] as $name => $firewall) {
@@ -564,16 +560,6 @@ class SecurityServiceProvider implements ServiceProviderInterface, EventListener
             };
         });
 
-        $app['security.authentication_listener.anonymous._proto'] = $app->protect(function ($providerKey, $options) use ($app) {
-            return function () use ($app, $providerKey, $options) {
-                return new AnonymousAuthenticationListener(
-                    $app['security.token_storage'],
-                    $providerKey,
-                    $app['logger']
-                );
-            };
-        });
-
         $app['security.authentication.logout_handler._proto'] = $app->protect(function ($name, $options) use ($app) {
             return function () use ($name, $options, $app) {
                 return new DefaultLogoutListener(
@@ -671,40 +657,6 @@ class SecurityServiceProvider implements ServiceProviderInterface, EventListener
                     implode(', ', $authenticatorIds)
                 )
             );
-        });
-
-        $app['security.authentication_provider.dao._proto'] = $app->protect(function ($name, $options) use ($app) {
-            return function () use ($app, $name) {
-                return new DaoAuthenticationProvider(
-                    $app['security.user_provider.'.$name],
-                    $app['security.user_checker'],
-                    $name,
-                    $app['security.encoder_factory'],
-                    $app['security.hide_user_not_found']
-                );
-            };
-        });
-
-        $app['security.authentication_provider.guard._proto'] = $app->protect(function ($name, $options) use ($app) {
-            return function () use ($app, $name, $options) {
-                $authenticators = [];
-                foreach ($options['authenticators'] as $authenticatorId) {
-                    $authenticators[] = $app[$authenticatorId];
-                }
-
-                return new GuardAuthenticationProvider(
-                    $authenticators,
-                    $app['security.user_provider.'.$name],
-                    $name,
-                    $app['security.user_checker']
-                );
-            };
-        });
-
-        $app['security.authentication_provider.anonymous._proto'] = $app->protect(function ($name, $options) use ($app) {
-            return function () use ($app, $name) {
-                return new AnonymousAuthenticationProvider($name);
-            };
         });
 
         $app['security.authentication_utils'] = function ($app) {

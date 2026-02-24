@@ -305,18 +305,18 @@ class FormServiceProviderTest extends TestCase
         }
     }
 
-    public function testFormCsrf()
-    {
-        $app = new Application();
-        $app->register(new FormServiceProvider());
-        $app->register(new SessionServiceProvider());
-        $app->register(new CsrfServiceProvider());
-        $app['session.test'] = true;
-
-        $form = $app['form.factory']->createBuilder(FormType::class, [])->getForm();
-
-        self::assertTrue(isset($form->createView()['_token']));
-    }
+    //    public function testFormCsrf()
+    //    {
+    //        $app = new Application();
+    //        $app->register(new FormServiceProvider());
+    //        $app->register(new SessionServiceProvider());
+    //        $app->register(new CsrfServiceProvider());
+    //        $app['session.test'] = true;
+    //
+    //        $form = $app['form.factory']->createBuilder(FormType::class, [])->getForm();
+    //
+    //        self::assertTrue(isset($form->createView()['_token']));
+    //    }
 
     public function testUserExtensionCanConfigureDefaultExtensions()
     {

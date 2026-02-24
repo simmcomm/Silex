@@ -258,7 +258,7 @@ class Application extends Container implements HttpKernelInterface, TerminableIn
         $this->on(
             KernelEvents::REQUEST,
             function (RequestEvent $event) use ($callback, $app) {
-                if (!$event->isMasterRequest()) {
+                if (!$event->isMainRequest()) {
                     return;
                 }
 
@@ -288,7 +288,7 @@ class Application extends Container implements HttpKernelInterface, TerminableIn
         $this->on(
             KernelEvents::RESPONSE,
             function (ResponseEvent $event) use ($callback, $app) {
-                if (!$event->isMasterRequest()) {
+                if (!$event->isMainRequest()) {
                     return;
                 }
 
@@ -513,7 +513,7 @@ class Application extends Container implements HttpKernelInterface, TerminableIn
      * If you call this method directly instead of run(), you must call the
      * terminate() method yourself if you want the finish filters to be run.
      */
-    public function handle(Request $request, $type = HttpKernelInterface::MASTER_REQUEST, $catch = true): Response
+    public function handle(Request $request, $type = HttpKernelInterface::MAIN_REQUEST, $catch = true): Response
     {
         if (!$this->booted) {
             $this->boot();

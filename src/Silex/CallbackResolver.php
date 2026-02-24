@@ -43,13 +43,9 @@ class CallbackResolver
     /**
      * Returns a callable given its string representation.
      *
-     * @param string $name
-     *
-     * @return callable
-     *
      * @throws InvalidArgumentException in case the method does not exist
      */
-    public function convertCallback($name)
+    public function convertCallback(string $name): callable
     {
         if (preg_match(static::SERVICE_PATTERN, $name)) {
             [$service, $method] = explode(':', $name, 2);

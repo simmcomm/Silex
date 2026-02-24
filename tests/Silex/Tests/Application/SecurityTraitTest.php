@@ -14,8 +14,9 @@ namespace Silex\Tests\Application;
 use PHPUnit\Framework\TestCase;
 use Silex\Provider\SecurityServiceProvider;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactoryInterface;
 use Symfony\Component\Security\Core\Exception\AuthenticationCredentialsNotFoundException;
-use Symfony\Component\Security\Core\User\User;
+use Symfony\Component\Security\Core\User\InMemoryUser;
 
 /**
  * @author Fabien Potencier <fabien@symfony.com>
@@ -28,12 +29,14 @@ class SecurityTraitTest extends TestCase
             'fabien' => ['ROLE_ADMIN', '$2y$15$lzUNsTegNXvZW3qtfucV0erYBcEqWVeyOmjolB7R1uodsAVJ95vvu'],
         ]);
 
-        $user = new User('foo', 'bar');
+        $user = new InMemoryUser('foo', 'bar');
         $password = 'foo';
-        $encoded = $app->encodePassword($user, $password);
+        $hashed = $app->hashPassword($user, $password);
 
+        /** @var PasswordHasherFactoryInterface $passwordHasherFactory */
+        $passwordHasherFactory = $app['security.password_hasher_factory'];
         $this->assertTrue(
-            $app['security.encoder_factory']->getEncoder($user)->isPasswordValid($encoded, $password, $user->getSalt())
+            $passwordHasherFactory->getPasswordHasher($user)->verify($hashed, $password),
         );
     }
 
